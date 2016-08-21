@@ -1,5 +1,6 @@
 package me.codego.view;
 
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
@@ -7,6 +8,7 @@ import android.graphics.PixelFormat;
 import android.os.Build;
 import android.provider.Settings;
 import android.util.AttributeSet;
+import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.ViewConfiguration;
@@ -23,8 +25,12 @@ public class FloatLayout extends FrameLayout {
 
     private WindowManager.LayoutParams params;
     private WindowManager windowManager;
+    private DisplayMetrics displayMetrics;
+    private ValueAnimator stickyAnimator;
 
     private boolean isFloatTop = false;
+
+    private static final int STICKY_DURATION = 300;
 
 
     public FloatLayout(Context context) {
@@ -33,6 +39,8 @@ public class FloatLayout extends FrameLayout {
 
     public FloatLayout(Context context, AttributeSet attrs) {
         super(context, attrs);
+
+        displayMetrics = getResources().getDisplayMetrics();
 
         windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         params = new WindowManager.LayoutParams();
@@ -54,6 +62,7 @@ public class FloatLayout extends FrameLayout {
             case MotionEvent.ACTION_DOWN:
                 lastX = ev.getRawX();
                 lastY = ev.getRawY();
+                cancelStickyAnim();
                 return false;
             case MotionEvent.ACTION_MOVE:
                 if (Math.abs(ev.getX() - lastX) > touchSlop || Math.abs(ev.getY() - lastY) > touchSlop) {
@@ -70,6 +79,9 @@ public class FloatLayout extends FrameLayout {
             case MotionEvent.ACTION_MOVE:
                 move(event.getRawX(), event.getRawY());
                 break;
+            case MotionEvent.ACTION_UP:
+                animMoveToEdge(event);
+                break;
         }
         return super.onTouchEvent(event);
     }
@@ -77,12 +89,44 @@ public class FloatLayout extends FrameLayout {
     @Override
     protected void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
+        int[] outLocation = new int[2];
+        getLocationOnScreen(outLocation);
+        int newX = isHalfScreenWidth(outLocation[0]) ? displayMetrics.heightPixels : 0;
+        move(newX, outLocation[1]+getHeight()/2);
     }
 
     private void move(float x, float y) {
         params.x = (int) (x - getWidth()/2);
         params.y = (int) (y - getHeight());
         windowManager.updateViewLayout(this, params);
+    }
+
+    private void animMoveToEdge(MotionEvent event) {
+        float x = event.getRawX();
+        float y = event.getRawY();
+        int newX = isHalfScreenWidth(x) ? displayMetrics.widthPixels : 0;
+        animMoveX(x, newX, y);
+    }
+
+    private void animMoveX(float fromX, float toX, final float baseY) {
+        stickyAnimator = ValueAnimator.ofFloat(fromX, toX).setDuration(STICKY_DURATION);
+        stickyAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animator) {
+                move(((float) animator.getAnimatedValue()), baseY);
+            }
+        });
+        stickyAnimator.start();
+    }
+
+    private void cancelStickyAnim() {
+        if (stickyAnimator != null && stickyAnimator.isRunning()) {
+            stickyAnimator.cancel();
+        }
+    }
+
+    private boolean isHalfScreenWidth(float x) {
+        return x - displayMetrics.widthPixels / 2 > 0;
     }
 
     private boolean isFloat;
@@ -116,7 +160,6 @@ public class FloatLayout extends FrameLayout {
             windowManager.removeView(this);
         }
     }
-
 
     public boolean isFloatTop() {
         return isFloatTop;
