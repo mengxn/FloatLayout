@@ -9,6 +9,7 @@ import android.os.Build;
 import android.provider.Settings;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.ViewConfiguration;
@@ -91,13 +92,13 @@ public class FloatLayout extends FrameLayout {
         super.onConfigurationChanged(newConfig);
         int[] outLocation = new int[2];
         getLocationOnScreen(outLocation);
-        int newX = isHalfScreenWidth(outLocation[0]) ? displayMetrics.heightPixels : 0;
-        move(newX, outLocation[1]+getHeight()/2);
+        int newX = outLocation[0] > displayMetrics.heightPixels/2 ? displayMetrics.widthPixels : 0;
+        move(newX, outLocation[1]);
     }
 
     private void move(float x, float y) {
         params.x = (int) (x - getWidth()/2);
-        params.y = (int) (y - getHeight());
+        params.y = (int) (y - getHeight()/2);
         windowManager.updateViewLayout(this, params);
     }
 
