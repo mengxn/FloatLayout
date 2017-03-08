@@ -9,7 +9,6 @@ import android.os.Build;
 import android.provider.Settings;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.ViewConfiguration;
@@ -23,6 +22,7 @@ public class FloatLayout extends FrameLayout {
 
     private float lastX, lastY;
     private int touchSlop;
+    private int mStatusBarHeight;
 
     private WindowManager.LayoutParams params;
     private WindowManager windowManager;
@@ -55,6 +55,11 @@ public class FloatLayout extends FrameLayout {
         params.x = 0;
 
         touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
+
+        int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
+        if (resourceId > 0) {
+            mStatusBarHeight = getResources().getDimensionPixelSize(resourceId);
+        }
     }
 
     @Override
@@ -98,7 +103,7 @@ public class FloatLayout extends FrameLayout {
 
     private void move(float x, float y) {
         params.x = (int) (x - getWidth()/2);
-        params.y = (int) (y - getHeight()/2);
+        params.y = (int) (y - getHeight()/2 - mStatusBarHeight);
         windowManager.updateViewLayout(this, params);
     }
 
